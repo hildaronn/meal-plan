@@ -1,0 +1,20 @@
+[
+  {
+    "title": "EXAMPLE — copy this whole block for each new recipe, then delete this one",
+    "mealTypes": ["Dinner", "Lunch"],
+    "servings": 4,
+    "ingredients": [
+      { "item": "chicken thighs", "category": "protein", "amount": 1.5, "unit": "lb" },
+      { "item": "broccoli", "category": "vegetable", "amount": 2, "unit": "cup" },
+      { "item": "rice", "category": "starch", "amount": 1, "unit": "cup" },
+      { "item": "soy sauce", "category": "sauce", "amount": 2, "unit": "tbsp" },
+      { "item": "sesame seeds", "category": "side" }
+    ],
+    "steps": [
+      "Season chicken thighs with salt and pepper, then sear in a hot pan with oil until golden, about 6 minutes per side.",
+      "Steam or roast the broccoli until tender-crisp, about 5 minutes.",
+      "Cook rice according to package directions.",
+      "Slice the chicken, drizzle everything with soy sauce, and top with sesame seeds."
+    ]
+  }
+]

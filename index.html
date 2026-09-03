@@ -68,6 +68,21 @@ section h2{margin-bottom:4px;}
 .pill-row{display:flex; flex-wrap:wrap; gap:10px;}
 .meal-pill{border:1px solid var(--ink); background:transparent; color:var(--ink); border-radius:999px; padding:9px 20px; font-size:0.92rem; font-weight:500;}
 .meal-pill[aria-pressed="true"]{background:var(--pumpkin); border-color:var(--pumpkin); color:#FFF6EC;}
+.day-pill{border:1px solid var(--ink); background:transparent; color:var(--ink); border-radius:999px; padding:8px 16px; font-size:0.88rem; font-weight:500;}
+.day-pill[aria-pressed="true"]{background:var(--herb-dark); border-color:var(--herb-dark); color:#F7F4E8;}
+.day-actions{display:flex; gap:10px; margin-top:14px;}
+.repeat-controls{margin-top:24px; display:flex; flex-direction:column; gap:12px;}
+.repeat-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+.repeat-row .repeat-label{min-width:90px; font-weight:600; font-size:0.9rem;}
+.repeat-row input{width:110px; border:1px solid var(--line); border-radius:var(--radius); padding:7px 10px; font-size:0.88rem; background:var(--card);}
+.repeat-row .repeat-hint{font-size:0.76rem; color:var(--ink-soft);}
+
+.plan-grid-wrap{overflow-x:auto; margin-bottom:26px; border:1px solid var(--line); border-radius:var(--radius);}
+.plan-grid{border-collapse:collapse; width:100%; font-size:0.82rem; background:var(--card);}
+.plan-grid th, .plan-grid td{border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top;}
+.plan-grid th{background:#EEE8D6; font-family:'Fraunces',serif; font-weight:500; font-style:italic; color:var(--herb-dark);}
+.plan-grid td{min-width:130px;}
+.plan-grid .empty-cell{color:var(--ink-soft);}
 
 .generate-row{padding:36px 0; text-align:center; border-bottom:1px solid var(--line);}
 .error-text{color:var(--danger); font-size:0.88rem; margin-top:12px; max-width:60ch; margin-left:auto; margin-right:auto;}
@@ -97,8 +112,17 @@ section h2{margin-bottom:4px;}
 .grocery-item input{margin-top:4px;}
 .grocery-item.checked label{text-decoration:line-through; color:var(--ink-soft);}
 .grocery-item .from{display:block; font-size:0.76rem; color:var(--ink-soft); margin-top:1px;}
+.grocery-item .from em{color:var(--herb-dark); font-style:italic;}
 
 .empty-note{color:var(--ink-soft); font-size:0.9rem; padding:20px 0;}
+
+.plan-stage{margin-bottom:26px;}
+.plan-stage h4{font-family:'Fraunces',serif; font-weight:500; font-style:italic; color:var(--herb-dark); font-size:1.1rem; margin-bottom:4px;}
+.plan-stage .stage-hint{font-size:0.8rem; color:var(--ink-soft); margin-bottom:10px;}
+.plan-step{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:10px 14px; margin-bottom:8px; font-size:0.9rem;}
+.plan-step .step-recipe{display:inline-block; font-weight:700; color:var(--pumpkin); font-size:0.76rem; text-transform:uppercase; letter-spacing:0.02em; margin-right:8px;}
+.plan-step .step-tag{display:inline-block; background:#EEE8D6; border-radius:999px; padding:2px 8px; font-size:0.72rem; color:var(--ink-soft); margin-left:6px;}
+
 .disclaimer{max-width:1000px; margin:40px auto 0; font-size:0.8rem; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:18px;}
 </style>
 </head>
@@ -106,7 +130,7 @@ section h2{margin-bottom:4px;}
 
 <header class="site-header">
   <div class="wordmark">Prep<span class="dot">.</span></div>
-  <p class="tagline">List what's in your kitchen and get real recipes matched from a library of thousands — plus a grocery list for whatever you're missing.</p>
+  <p class="tagline">List what's in your kitchen, plan out your week meal by meal, and get a grocery list for whatever you're missing.</p>
   <p class="dataset-status" id="dataset-status">Loading recipe library…</p>
 </header>
 
@@ -123,25 +147,44 @@ section h2{margin-bottom:4px;}
     <div class="pill-row" id="meal-pills"></div>
   </section>
 
+  <section aria-labelledby="days-heading">
+    <h2 id="days-heading">Plan your days</h2>
+    <p class="section-sub">Choose which days to plan for, and how often each meal repeats before switching to something new.</p>
+    <div class="pill-row" id="day-pills"></div>
+    <div class="day-actions">
+      <button id="full-week-btn" class="btn-tiny" type="button">Select full week</button>
+      <button id="clear-days-btn" class="btn-tiny" type="button">Clear days</button>
+    </div>
+    <div class="repeat-controls" id="repeat-controls"></div>
+  </section>
+
   <div class="generate-row">
     <button id="generate-btn" class="btn-primary" disabled>Loading recipes…</button>
     <p id="generate-error" class="error-text" hidden></p>
   </div>
 
   <section id="results-section" hidden aria-labelledby="results-heading">
-    <h2 id="results-heading">Recipes that match what you have</h2>
-    <p class="section-sub">Checkmarked ingredients are things you listed; the rest go on your grocery list. Uncheck any recipe you don't want counted.</p>
+    <h2 id="results-heading">Your meal plan</h2>
+    <p class="section-sub">Checkmarked ingredients are things you listed; the rest go on your grocery list. Uncheck any meal you don't want counted, or shuffle for different picks.</p>
+    <div class="plan-grid-wrap"><table class="plan-grid" id="plan-table"></table></div>
     <div class="recipe-grid" id="recipe-grid"></div>
-    <div class="load-more-row"><button id="load-more-btn" class="btn-tiny" hidden>Show more matches</button></div>
+    <div class="load-more-row"><button id="shuffle-btn" class="btn-tiny">Shuffle for different picks</button></div>
     <div class="grocery-row">
       <button id="grocery-btn" class="btn-secondary">Build grocery list</button>
+      <button id="cooking-plan-btn" class="btn-secondary">Build cooking plan</button>
     </div>
   </section>
 
   <section id="grocery-section" hidden aria-labelledby="grocery-heading">
     <h2 id="grocery-heading">Grocery list</h2>
-    <p class="pantry-note">Only ingredients you didn't already list are included, minus oil, salt, and pepper (assumed on hand).</p>
+    <p class="pantry-note">Only ingredients you didn't already list are included, minus oil, salt, and pepper (assumed on hand). When a meal repeats across several days, its quantities are scaled up to cover the whole stretch — look for "(scaled up)". About 87% of ingredients have a real parsed quantity; the rest show just the ingredient name, so double-check those by eye.</p>
     <div id="grocery-list"></div>
+  </section>
+
+  <section id="cooking-plan-section" hidden aria-labelledby="cooking-plan-heading">
+    <h2 id="cooking-plan-heading">Cooking plan</h2>
+    <p class="pantry-note">Every recipe in your plan, grouped into a batch-cooking order — do all your chopping and prep first, get the oven going, use the stovetop while the oven works, then finish everything up. Steps are sorted by keyword (oven/stovetop/prep/finish), not verified timing, so adjust to your own kitchen and equipment.</p>
+    <div id="cooking-plan"></div>
   </section>
 </main>
 
@@ -157,14 +200,17 @@ const CATEGORIES = [
 ];
 const MEAL_TYPES = ['Breakfast','Lunch','Dinner','Snack','Dessert'];
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(c => [c.key, c.label]));
-const RESULTS_PAGE = 6;
+const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const WEEKDAY_SHORT = {Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat',Sunday:'Sun'};
 
 const state = {
   categories: Object.fromEntries(CATEGORIES.map(c => [c.key, []])),
   mealTypes: new Set(),
+  selectedDays: new Set(WEEKDAYS),
+  repeatPatterns: Object.fromEntries(MEAL_TYPES.map(mt => [mt, '1'])),
   dataset: [],
-  rankedMatches: [],
-  visibleCount: RESULTS_PAGE,
+  plan: {},
+  planEntries: [],
   apiKey: ''
 };
 
@@ -176,13 +222,20 @@ function loadPreferences(){
       const data = JSON.parse(raw);
       if(data.categories) CATEGORIES.forEach(c => { state.categories[c.key] = Array.isArray(data.categories[c.key]) ? data.categories[c.key] : []; });
       if(Array.isArray(data.mealTypes)) state.mealTypes = new Set(data.mealTypes);
+      if(Array.isArray(data.selectedDays) && data.selectedDays.length) state.selectedDays = new Set(data.selectedDays);
+      if(data.repeatPatterns) MEAL_TYPES.forEach(mt => { if(data.repeatPatterns[mt]) state.repeatPatterns[mt] = data.repeatPatterns[mt]; });
     }
     state.apiKey = localStorage.getItem('prep:apiKey') || '';
   }catch(e){ /* unavailable */ }
 }
 function savePreferences(){
   try{
-    localStorage.setItem('prep:preferences', JSON.stringify({ categories: state.categories, mealTypes: Array.from(state.mealTypes) }));
+    localStorage.setItem('prep:preferences', JSON.stringify({
+      categories: state.categories,
+      mealTypes: Array.from(state.mealTypes),
+      selectedDays: Array.from(state.selectedDays),
+      repeatPatterns: state.repeatPatterns
+    }));
   }catch(e){ /* unavailable */ }
 }
 function saveApiKey(key){
@@ -193,17 +246,106 @@ function saveApiKey(key){
 function cap(str){ return String(str).replace(/\b\w/g, c => c.toUpperCase()); }
 function escapeHtml(str){ const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
+// ---------- quantity formatting ----------
+const PLURAL_UNITS = {cup:'cups', clove:'cloves', slice:'slices', can:'cans', package:'packages',
+  sprig:'sprigs', bunch:'bunches', stalk:'stalks', stick:'sticks', head:'heads', pinch:'pinches',
+  jar:'jars', bottle:'bottles'};
+function formatUnit(unit, amount){
+  if(!unit) return '';
+  if(PLURAL_UNITS[unit]) return amount === 1 ? unit : PLURAL_UNITS[unit];
+  return unit; // tsp, tbsp, oz, lb, g, kg, ml, l stay the same regardless of amount
+}
+function niceAmount(n){
+  const rounded = Math.round(n * 100) / 100;
+  if(Number.isInteger(rounded)) return String(rounded);
+  const whole = Math.floor(rounded);
+  const frac = rounded - whole;
+  const fracMap = [[0.25,'¼'],[0.5,'½'],[0.75,'¾'],[0.333,'⅓'],[0.667,'⅔']];
+  for(const [val, sym] of fracMap){
+    if(Math.abs(frac - val) < 0.05) return whole > 0 ? `${whole}${sym}` : sym;
+  }
+  return String(rounded);
+}
+function formatQuantity(amount, unit, item){
+  if(amount == null) return cap(item);
+  const amtStr = niceAmount(amount);
+  const unitStr = formatUnit(unit, amount);
+  return unitStr ? `${amtStr} ${unitStr} ${cap(item)}` : `${amtStr} ${cap(item)}`;
+}
+
+// ---------- custom-recipe nutrition auto-fill ----------
+const CUSTOM_NUTRITION_DB = {
+  protein:{'chicken':{cal:185,protein:35,carbs:0,fat:4},'beef':{cal:250,protein:24,carbs:0,fat:17},
+    'turkey':{cal:210,protein:26,carbs:0,fat:11},'pork':{cal:210,protein:27,carbs:0,fat:11},
+    'egg':{cal:220,protein:18,carbs:2,fat:15},'tofu':{cal:180,protein:16,carbs:4,fat:11},
+    'shrimp':{cal:150,protein:29,carbs:1,fat:2},'salmon':{cal:230,protein:25,carbs:0,fat:14},
+    'fish':{cal:180,protein:26,carbs:0,fat:7},'bean':{cal:220,protein:15,carbs:40,fat:1},
+    'default':{cal:180,protein:22,carbs:3,fat:8}},
+  vegetable:{'default':{cal:40,protein:2,carbs:8,fat:0.3}},
+  starch:{'rice':{cal:205,protein:4,carbs:45,fat:0.4},'pasta':{cal:220,protein:8,carbs:43,fat:1.3},
+    'bread':{cal:160,protein:6,carbs:30,fat:2},'potato':{cal:160,protein:4,carbs:37,fat:0.2},
+    'default':{cal:190,protein:5,carbs:40,fat:1.5}},
+  sauce:{'default':{cal:70,protein:1,carbs:6,fat:5}},
+  side:{'cheese':{cal:110,protein:7,carbs:1,fat:9},'default':{cal:100,protein:3,carbs:12,fat:7}}
+};
+function estimateNutrition(ingredients, servings){
+  const totals = {cal:0,protein:0,carbs:0,fat:0};
+  ingredients.forEach(ing => {
+    const db = CUSTOM_NUTRITION_DB[ing.category] || CUSTOM_NUTRITION_DB.side;
+    const t = String(ing.item).toLowerCase();
+    let match = db.default;
+    for(const key in db){ if(key !== 'default' && t.includes(key)){ match = db[key]; break; } }
+    totals.cal += match.cal; totals.protein += match.protein; totals.carbs += match.carbs; totals.fat += match.fat;
+  });
+  const s = servings || 4;
+  return {
+    calories: Math.round(totals.cal / s),
+    protein_g: Math.round((totals.protein / s) * 10) / 10,
+    carbs_g: Math.round((totals.carbs / s) * 10) / 10,
+    fat_g: Math.round((totals.fat / s) * 10) / 10
+  };
+}
+function normalizeCustomRecipe(r){
+  const ingredients = (r.ingredients || []).map(ing => ({
+    item: typeof ing === 'string' ? ing : ing.item,
+    category: (typeof ing === 'object' && ing.category) ? ing.category : 'side',
+    amount: (typeof ing === 'object' && typeof ing.amount === 'number') ? ing.amount : undefined,
+    unit: (typeof ing === 'object' && ing.unit) ? ing.unit : undefined
+  }));
+  const servings = r.servings || 4;
+  return {
+    title: r.title || 'Untitled recipe',
+    mealTypes: Array.isArray(r.mealTypes) && r.mealTypes.length ? r.mealTypes : ['Dinner'],
+    servings,
+    ingredients,
+    steps: Array.isArray(r.steps) ? r.steps : (r.steps ? [r.steps] : []),
+    nutrition: r.nutrition || estimateNutrition(ingredients, servings)
+  };
+}
+
 // ---------- dataset loading ----------
 async function loadDataset(){
   const statusEl = document.getElementById('dataset-status');
   try{
     const res = await fetch('./recipes.json');
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    state.dataset = await res.json();
-    statusEl.textContent = `${state.dataset.length.toLocaleString()} recipes loaded and ready to match.`;
+    const base = await res.json();
+
+    let custom = [];
+    try{
+      const customRes = await fetch('./my-recipes.json');
+      if(customRes.ok){
+        const raw = await customRes.json();
+        custom = raw.filter(r => !/^EXAMPLE/.test(r.title || '')).map(normalizeCustomRecipe);
+      }
+    }catch(e){ /* my-recipes.json is optional — fine if missing */ }
+
+    state.dataset = base.concat(custom);
+    const customNote = custom.length ? ` (including ${custom.length.toLocaleString()} of your own)` : '';
+    statusEl.textContent = `${state.dataset.length.toLocaleString()} recipes loaded and ready to match${customNote}.`;
     statusEl.classList.add('ready');
     document.getElementById('generate-btn').disabled = false;
-    document.getElementById('generate-btn').textContent = 'Generate recipes';
+    document.getElementById('generate-btn').textContent = 'Build meal plan';
   }catch(e){
     console.error(e);
     statusEl.innerHTML = `Couldn't load the recipe library. If you opened this file directly (double-clicked it), browsers block that — instead serve this folder with a local server (e.g. <code>python3 -m http.server</code>) or host it on Netlify/GitHub Pages, then open it from that address.`;
@@ -311,8 +453,47 @@ function renderMealPills(){
       if(state.mealTypes.has(type)) state.mealTypes.delete(type); else state.mealTypes.add(type);
       btn.setAttribute('aria-pressed', state.mealTypes.has(type) ? 'true' : 'false');
       savePreferences();
+      renderRepeatControls();
     });
     row.appendChild(btn);
+  });
+}
+
+// ---------- render: day pills & repeat controls ----------
+function renderDayPills(){
+  const row = document.getElementById('day-pills');
+  row.innerHTML = '';
+  WEEKDAYS.forEach(day => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'day-pill'; btn.textContent = WEEKDAY_SHORT[day];
+    btn.setAttribute('aria-pressed', state.selectedDays.has(day) ? 'true' : 'false');
+    btn.addEventListener('click', () => {
+      if(state.selectedDays.has(day)) state.selectedDays.delete(day); else state.selectedDays.add(day);
+      btn.setAttribute('aria-pressed', state.selectedDays.has(day) ? 'true' : 'false');
+      savePreferences();
+    });
+    row.appendChild(btn);
+  });
+}
+
+function renderRepeatControls(){
+  const wrap = document.getElementById('repeat-controls');
+  wrap.innerHTML = '';
+  const active = MEAL_TYPES.filter(mt => state.mealTypes.has(mt));
+  active.forEach(mt => {
+    const row = document.createElement('div');
+    row.className = 'repeat-row';
+    row.innerHTML = `
+      <span class="repeat-label">${mt}</span>
+      <input type="text" value="${escapeHtml(state.repeatPatterns[mt] || '1')}" aria-label="Repeat pattern for ${mt}" placeholder="1">
+      <span class="repeat-hint">e.g. 1 = a new recipe every day · 3,4 = 3 days of one, then 4 of another</span>
+    `;
+    const input = row.querySelector('input');
+    input.addEventListener('change', () => {
+      state.repeatPatterns[mt] = input.value.trim() || '1';
+      savePreferences();
+    });
+    wrap.appendChild(row);
   });
 }
 
@@ -419,12 +600,10 @@ function isMatched(recipeItemText, userPool){
   return false;
 }
 
-function rankRecipes(){
-  const mealTypeList = Array.from(state.mealTypes);
-
+function rankRecipesForMealType(mealType){
   const scored = [];
   for(const recipe of state.dataset){
-    if(!recipe.mealTypes.some(mt => mealTypeList.includes(mt))) continue;
+    if(!recipe.mealTypes.includes(mealType)) continue;
     let matchedCount = 0;
     const annotated = recipe.ingredients.map(ing => {
       // Compare only within the same ingredient category to avoid
@@ -437,14 +616,40 @@ function rankRecipes(){
     const total = recipe.ingredients.length;
     const score = total > 0 ? matchedCount / total : 0;
     if(matchedCount >= 1 && score >= 0.2){
-      scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score });
+      scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score, _jitter: Math.random() });
     }
   }
-  scored.sort((a,b) => (b.matchedCount - a.matchedCount) || (b.score - a.score) || (a.total - b.total));
+  scored.sort((a,b) => (b.matchedCount - a.matchedCount) || (b.score - a.score) || (a.total - b.total) || (a._jitter - b._jitter));
   return scored;
 }
 
-function generateRecipes(){
+function parsePattern(str){
+  const nums = String(str || '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0);
+  return nums.length ? nums : [1];
+}
+
+function buildBlocksForDays(pattern, totalDays){
+  const blocks = [];
+  let remaining = totalDays;
+  let i = 0;
+  while(remaining > 0){
+    const size = Math.min(pattern[i % pattern.length], remaining);
+    blocks.push(size);
+    remaining -= size;
+    i++;
+  }
+  return blocks;
+}
+
+function formatDayRange(daysArr){
+  const shorts = daysArr.map(d => WEEKDAY_SHORT[d]);
+  if(shorts.length === 1) return shorts[0];
+  const indices = daysArr.map(d => WEEKDAYS.indexOf(d));
+  const contiguous = indices.every((idx, i) => i === 0 || idx === indices[i-1] + 1);
+  return contiguous ? `${shorts[0]}–${shorts[shorts.length-1]}` : shorts.join(', ');
+}
+
+function buildMealPlan(){
   const errorEl = document.getElementById('generate-error');
   errorEl.hidden = true;
 
@@ -459,98 +664,152 @@ function generateRecipes(){
     errorEl.hidden = false;
     return;
   }
-  if(state.mealTypes.size === 0){
+  const mealTypeList = MEAL_TYPES.filter(mt => state.mealTypes.has(mt));
+  if(mealTypeList.length === 0){
     errorEl.textContent = 'Pick at least one meal type.';
     errorEl.hidden = false;
     return;
   }
+  const days = WEEKDAYS.filter(d => state.selectedDays.has(d));
+  if(days.length === 0){
+    errorEl.textContent = 'Select at least one day to plan for.';
+    errorEl.hidden = false;
+    return;
+  }
 
-  state.rankedMatches = rankRecipes();
-  state.visibleCount = RESULTS_PAGE;
+  const plan = {};
+  const planEntries = [];
+  let anyMatches = false;
 
-  if(state.rankedMatches.length === 0){
-    errorEl.textContent = "No recipes matched closely enough. Try adding more ingredients, especially proteins and starches, or widen your meal types.";
+  mealTypeList.forEach(mt => {
+    const pattern = parsePattern(state.repeatPatterns[mt]);
+    const blocks = buildBlocksForDays(pattern, days.length);
+    const candidates = rankRecipesForMealType(mt);
+    if(candidates.length) anyMatches = true;
+    const usedTitles = new Set();
+    let cursor = 0;
+    const entries = [];
+    blocks.forEach(len => {
+      const blockDays = days.slice(cursor, cursor + len);
+      cursor += len;
+      let recipe = null;
+      if(candidates.length){
+        recipe = candidates.find(c => !usedTitles.has(c.title)) || candidates[0];
+        usedTitles.add(recipe.title);
+      }
+      const entry = { mealType: mt, days: blockDays, dayRangeLabel: formatDayRange(blockDays), recipe, included: true };
+      entries.push(entry);
+      if(recipe) planEntries.push(entry);
+    });
+    plan[mt] = entries;
+  });
+
+  if(!anyMatches){
+    errorEl.textContent = "No recipes matched closely enough for any selected meal type. Try adding more ingredients, especially proteins and starches.";
     errorEl.hidden = false;
     document.getElementById('results-section').hidden = true;
     return;
   }
 
-  renderRecipes();
+  state.plan = plan;
+  state.planEntries = planEntries;
+  renderPlan(mealTypeList, days);
   document.getElementById('results-section').hidden = false;
   document.getElementById('grocery-section').hidden = true;
+  document.getElementById('cooking-plan-section').hidden = true;
   document.getElementById('results-section').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-function renderRecipes(){
-  const grid = document.getElementById('recipe-grid');
-  grid.innerHTML = '';
-  const visible = state.rankedMatches.slice(0, state.visibleCount);
-
-  visible.forEach((recipe, idx) => {
-    if(recipe.included === undefined) recipe.included = true;
-    const card = document.createElement('article');
-    card.className = 'recipe-card';
-    const ingredientItems = recipe.ingredients.map(ing =>
-      `<li class="${ing.matched ? 'have' : 'need'}">${escapeHtml(cap(ing.item))}</li>`
-    ).join('');
-    const stepItems = recipe.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('');
-    const n = recipe.nutrition;
-    card.innerHTML = `
-      <span class="recipe-tab">${escapeHtml(recipe.mealTypes.join(' · '))}</span>
-      <span class="match-badge">${recipe.matchedCount}/${recipe.total} on hand</span>
-      <h3>${escapeHtml(recipe.title)}</h3>
-      <p class="recipe-servings">Makes about ${recipe.servings} servings</p>
-      <p class="section-label">Ingredients</p>
-      <ul>${ingredientItems}</ul>
-      <p class="section-label">Steps</p>
-      <ol>${stepItems}</ol>
-      <div class="nutri-row">
-        <span class="nutri-badge">${n.calories} kcal</span>
-        <span class="nutri-badge">${n.protein_g}g protein</span>
-        <span class="nutri-badge">${n.carbs_g}g carbs</span>
-        <span class="nutri-badge">${n.fat_g}g fat</span>
-      </div>
-      <div class="include-row">
-        <input type="checkbox" id="include-${idx}" ${recipe.included ? 'checked' : ''}>
-        <label for="include-${idx}">Include in grocery list</label>
-      </div>
-    `;
-    card.querySelector(`#include-${idx}`).addEventListener('change', e => { recipe.included = e.target.checked; });
-    grid.appendChild(card);
-  });
-
-  const loadMoreBtn = document.getElementById('load-more-btn');
-  loadMoreBtn.hidden = state.visibleCount >= state.rankedMatches.length;
+function renderPlanTable(mealTypeList, days){
+  const table = document.getElementById('plan-table');
+  const headerRow = `<tr><th>Meal</th>${days.map(d => `<th>${WEEKDAY_SHORT[d]}</th>`).join('')}</tr>`;
+  const bodyRows = mealTypeList.map(mt => {
+    const cells = days.map(day => {
+      const entry = (state.plan[mt] || []).find(e => e.days.includes(day));
+      if(!entry || !entry.recipe) return `<td class="empty-cell">—</td>`;
+      return `<td>${escapeHtml(entry.recipe.title)}</td>`;
+    }).join('');
+    return `<tr><th>${mt}</th>${cells}</tr>`;
+  }).join('');
+  table.innerHTML = headerRow + bodyRows;
 }
 
-document.getElementById('load-more-btn')?.addEventListener('click', () => {
-  state.visibleCount += RESULTS_PAGE;
-  renderRecipes();
-});
+function renderPlan(mealTypeList, days){
+  renderPlanTable(mealTypeList, days);
+
+  const grid = document.getElementById('recipe-grid');
+  grid.innerHTML = '';
+  let cardIdx = 0;
+
+  mealTypeList.forEach(mt => {
+    (state.plan[mt] || []).forEach(entry => {
+      if(!entry.recipe) return;
+      const recipe = entry.recipe;
+      const idx = cardIdx++;
+      const card = document.createElement('article');
+      card.className = 'recipe-card';
+      const ingredientItems = recipe.ingredients.map(ing =>
+        `<li class="${ing.matched ? 'have' : 'need'}">${escapeHtml(formatQuantity(ing.amount, ing.unit, ing.item))}</li>`
+      ).join('');
+      const stepItems = recipe.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+      const n = recipe.nutrition;
+      card.innerHTML = `
+        <span class="recipe-tab">${escapeHtml(mt)} · ${escapeHtml(entry.dayRangeLabel)}</span>
+        <span class="match-badge">${recipe.matchedCount}/${recipe.total} on hand</span>
+        <h3>${escapeHtml(recipe.title)}</h3>
+        <p class="recipe-servings">Makes about ${recipe.servings} servings</p>
+        <p class="section-label">Ingredients</p>
+        <ul>${ingredientItems}</ul>
+        <p class="section-label">Steps</p>
+        <ol>${stepItems}</ol>
+        <div class="nutri-row">
+          <span class="nutri-badge">${n.calories} kcal</span>
+          <span class="nutri-badge">${n.protein_g}g protein</span>
+          <span class="nutri-badge">${n.carbs_g}g carbs</span>
+          <span class="nutri-badge">${n.fat_g}g fat</span>
+        </div>
+        <div class="include-row">
+          <input type="checkbox" id="include-${idx}" ${entry.included ? 'checked' : ''}>
+          <label for="include-${idx}">Include in grocery list</label>
+        </div>
+      `;
+      card.querySelector(`#include-${idx}`).addEventListener('change', e => { entry.included = e.target.checked; });
+      grid.appendChild(card);
+    });
+  });
+}
+
+document.getElementById('shuffle-btn')?.addEventListener('click', () => { buildMealPlan(); });
 
 // ---------- grocery list ----------
 function buildGroceryList(){
-  const visible = state.rankedMatches.slice(0, state.visibleCount);
-  const included = visible.filter(r => r.included);
+  const included = state.planEntries.filter(e => e.included && e.recipe);
   const section = document.getElementById('grocery-section');
   const listEl = document.getElementById('grocery-list');
   listEl.innerHTML = '';
 
   if(included.length === 0){
-    listEl.innerHTML = '<p class="empty-note">Include at least one recipe above to build a grocery list.</p>';
+    listEl.innerHTML = '<p class="empty-note">Include at least one meal above to build a grocery list.</p>';
     section.hidden = false;
     section.scrollIntoView({behavior:'smooth', block:'start'});
     return;
   }
 
   const groups = {};
-  included.forEach(recipe => {
+  included.forEach(entry => {
+    const recipe = entry.recipe;
+    const dayCount = entry.days.length;
+    const source = `${recipe.title} (${entry.mealType}, ${entry.dayRangeLabel})`;
     recipe.ingredients.filter(ing => !ing.matched).forEach(ing => {
       const cat = ing.category;
       const key = ing.item.trim().toLowerCase();
       if(!groups[cat]) groups[cat] = {};
-      if(!groups[cat][key]) groups[cat][key] = { item: ing.item, recipes: [] };
-      groups[cat][key].recipes.push(recipe.title);
+      if(!groups[cat][key]) groups[cat][key] = { item: ing.item, occurrences: [] };
+      const scaledAmount = ing.amount != null ? ing.amount * dayCount : null;
+      const qtyLabel = scaledAmount != null
+        ? `${niceAmount(scaledAmount)}${ing.unit ? ' ' + formatUnit(ing.unit, scaledAmount) : ''}`
+        : null;
+      groups[cat][key].occurrences.push({ qtyLabel, source, scaled: dayCount > 1 });
     });
   });
 
@@ -562,9 +821,13 @@ function buildGroceryList(){
     const groupEl = document.createElement('div');
     groupEl.className = 'grocery-group';
     const rows = Object.values(items).map((entry, i) => {
-      const fromText = `for ${entry.recipes.join(', ')}`;
       const id = `grocery-${cat.key}-${i}`;
-      return `<div class="grocery-item"><input type="checkbox" id="${id}"><label for="${id}">${escapeHtml(cap(entry.item))}<span class="from">${escapeHtml(fromText)}</span></label></div>`;
+      const fromLines = entry.occurrences.map(occ => {
+        const prefix = occ.qtyLabel ? `${escapeHtml(occ.qtyLabel)} — ` : '';
+        const scaledTag = occ.scaled ? ' <em>(scaled up)</em>' : '';
+        return `<span class="from">${prefix}for ${escapeHtml(occ.source)}${scaledTag}</span>`;
+      }).join('');
+      return `<div class="grocery-item"><input type="checkbox" id="${id}"><label for="${id}">${escapeHtml(cap(entry.item))}${fromLines}</label></div>`;
     }).join('');
     groupEl.innerHTML = `<h4>${cat.label}</h4>${rows}`;
     listEl.appendChild(groupEl);
@@ -582,13 +845,115 @@ function buildGroceryList(){
   section.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+// ---------- cooking plan ----------
+const OVEN_TEMP_RE = /(\d{3})\s*°\s*f?/i;
+const TIME_RE = /(\d+(?:\s*[-–to]\s*\d+)?)\s*(minutes?|mins?|hours?|hrs?)/i;
+const OVEN_WORDS = ['preheat','oven','bake','baking','baked','roast','broil'];
+const STOVETOP_WORDS = ['skillet','saucepan','stovetop','sauté','saute','sautéing','boil','simmer','fry','frying',
+  'pan','pot','wok','heat oil','heat the oil','medium heat','medium-high heat','high heat','low heat'];
+const FINISH_WORDS = ['serve','plate','garnish','drizzle','top with','divide among','sprinkle','transfer to a',
+  'let cool','enjoy'];
+const PREP_WORDS = ['chop','dice','mince','whisk','mix','combine','season','marinate','toss','slice','stir together',
+  'peel','trim','rinse','pat dry','zest','juice','beat','fold'];
+
+function classifyStep(text, isLastStep){
+  const t = text.toLowerCase();
+  const hasOven = OVEN_WORDS.some(w => t.includes(w));
+  const hasStovetop = STOVETOP_WORDS.some(w => t.includes(w));
+  const hasFinish = FINISH_WORDS.some(w => t.includes(w));
+  const hasPrep = PREP_WORDS.some(w => t.includes(w));
+  const timeMatch = t.match(TIME_RE);
+  const tempMatch = t.match(OVEN_TEMP_RE);
+
+  let type;
+  if(t.includes('preheat') && hasOven) type = 'oven-preheat';
+  else if(hasOven) type = 'oven';
+  else if(hasStovetop) type = 'stovetop';
+  else if(isLastStep && hasFinish) type = 'finish';
+  else if(hasFinish && !hasPrep) type = 'finish';
+  else type = 'prep';
+
+  return {
+    type,
+    timeLabel: timeMatch ? `${timeMatch[1]} ${timeMatch[2]}` : null,
+    tempLabel: tempMatch ? `${tempMatch[1]}°F` : null
+  };
+}
+
+function buildCookingPlan(){
+  const errorEl = document.getElementById('generate-error');
+  const seen = new Set();
+  const uniqueRecipes = [];
+  state.planEntries.forEach(entry => {
+    if(!entry.recipe || seen.has(entry.recipe.title)) return;
+    seen.add(entry.recipe.title);
+    uniqueRecipes.push(entry.recipe);
+  });
+
+  if(uniqueRecipes.length === 0){
+    errorEl.textContent = 'Build a meal plan first.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  const stages = { 'oven-preheat': [], oven: [], stovetop: [], prep: [], finish: [] };
+  uniqueRecipes.forEach(recipe => {
+    recipe.steps.forEach((step, i) => {
+      const isLast = i === recipe.steps.length - 1;
+      const c = classifyStep(step, isLast);
+      stages[c.type].push({ recipe: recipe.title, text: step, timeLabel: c.timeLabel, tempLabel: c.tempLabel });
+    });
+  });
+
+  const section = document.getElementById('cooking-plan-section');
+  const wrap = document.getElementById('cooking-plan');
+  wrap.innerHTML = '';
+
+  const stageDefs = [
+    { key: 'prep', title: '1. Prep everything first', hint: 'Chop, mix, season, and marinate for every recipe before you turn anything on — classic mise en place.' },
+    { key: 'oven-preheat', title: '2. Get the oven going', hint: 'Start these early since preheating takes a few minutes on its own.' },
+    { key: 'oven', title: '3. In the oven', hint: 'While these bake or roast, move on to the stovetop steps below.' },
+    { key: 'stovetop', title: '4. On the stovetop', hint: 'Good to do while oven items are cooking.' },
+    { key: 'finish', title: '5. Finish and assemble', hint: 'Pull everything together once the rest is done.' }
+  ];
+
+  stageDefs.forEach(def => {
+    const steps = stages[def.key];
+    if(!steps.length) return;
+    const stageEl = document.createElement('div');
+    stageEl.className = 'plan-stage';
+    const stepsHtml = steps.map(s => {
+      const tags = [s.tempLabel, s.timeLabel].filter(Boolean).map(t => `<span class="step-tag">${escapeHtml(t)}</span>`).join('');
+      return `<div class="plan-step"><span class="step-recipe">${escapeHtml(s.recipe)}</span>${escapeHtml(s.text)}${tags}</div>`;
+    }).join('');
+    stageEl.innerHTML = `<h4>${def.title}</h4><p class="stage-hint">${def.hint}</p>${stepsHtml}`;
+    wrap.appendChild(stageEl);
+  });
+
+  section.hidden = false;
+  section.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 // ---------- init ----------
 function init(){
   loadPreferences();
   renderBoard();
   renderMealPills();
-  document.getElementById('generate-btn').addEventListener('click', generateRecipes);
+  renderDayPills();
+  renderRepeatControls();
+  document.getElementById('full-week-btn').addEventListener('click', () => {
+    state.selectedDays = new Set(WEEKDAYS);
+    renderDayPills();
+    savePreferences();
+  });
+  document.getElementById('clear-days-btn').addEventListener('click', () => {
+    state.selectedDays = new Set();
+    renderDayPills();
+    savePreferences();
+  });
+  document.getElementById('generate-btn').addEventListener('click', buildMealPlan);
   document.getElementById('grocery-btn').addEventListener('click', buildGroceryList);
+  document.getElementById('cooking-plan-btn').addEventListener('click', buildCookingPlan);
   loadDataset();
 }
 init();
