@@ -615,7 +615,7 @@ function rankRecipesForMealType(mealType){
     });
     const total = recipe.ingredients.length;
     const score = total > 0 ? matchedCount / total : 0;
-    if(matchedCount >= 1 && score >= 0.2){
+    if(matchedCount >= 1 && score >= 0.15){
       scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score, _jitter: Math.random() });
     }
   }
@@ -694,7 +694,12 @@ function buildMealPlan(){
       cursor += len;
       let recipe = null;
       if(candidates.length){
-        recipe = candidates.find(c => !usedTitles.has(c.title)) || candidates[0];
+        // Pick randomly among the top matches (not always #1) so shuffling
+        // actually varies the results instead of returning the same pick.
+        const unused = candidates.filter(c => !usedTitles.has(c.title));
+        const pool = unused.length ? unused : candidates;
+        const topBand = pool.slice(0, Math.min(5, pool.length));
+        recipe = topBand[Math.floor(Math.random() * topBand.length)];
         usedTitles.add(recipe.title);
       }
       const entry = { mealType: mt, days: blockDays, dayRangeLabel: formatDayRange(blockDays), recipe, included: true };
