@@ -119,9 +119,19 @@ section h2{margin-bottom:4px;}
 .plan-stage{margin-bottom:26px;}
 .plan-stage h4{font-family:'Fraunces',serif; font-weight:500; font-style:italic; color:var(--herb-dark); font-size:1.1rem; margin-bottom:4px;}
 .plan-stage .stage-hint{font-size:0.8rem; color:var(--ink-soft); margin-bottom:10px;}
+.stage-hint{font-size:0.85rem; color:var(--ink-soft); margin-bottom:18px;}
+.plan-warning{background:#F6E7D8; border:1px solid var(--pumpkin); border-radius:var(--radius); padding:12px 14px; font-size:0.85rem; color:var(--ink); margin-bottom:16px;}
 .plan-step{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:10px 14px; margin-bottom:8px; font-size:0.9rem;}
 .plan-step .step-recipe{display:inline-block; font-weight:700; color:var(--pumpkin); font-size:0.76rem; text-transform:uppercase; letter-spacing:0.02em; margin-right:8px;}
 .plan-step .step-tag{display:inline-block; background:#EEE8D6; border-radius:999px; padding:2px 8px; font-size:0.72rem; color:var(--ink-soft); margin-left:6px;}
+
+.cook-order-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; margin-bottom:16px;}
+.cook-order-header{display:flex; align-items:flex-start; gap:14px; margin-bottom:10px;}
+.cook-order-num{flex-shrink:0; width:30px; height:30px; border-radius:50%; background:var(--herb-dark); color:#F7F4E8; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:0.95rem;}
+.cook-order-header h4{margin:0 0 4px; font-size:1.05rem;}
+.cook-order-header .step-tag{display:inline-block; background:#EEE8D6; border-radius:999px; padding:3px 10px; font-size:0.76rem; color:var(--ink-soft); margin-left:0;}
+.cook-order-card ol{margin:0; padding-left:24px; font-size:0.88rem;}
+.cook-order-card li{margin-bottom:5px;}
 
 .disclaimer{max-width:1000px; margin:40px auto 0; font-size:0.8rem; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:18px;}
 </style>
@@ -183,7 +193,7 @@ section h2{margin-bottom:4px;}
 
   <section id="cooking-plan-section" hidden aria-labelledby="cooking-plan-heading">
     <h2 id="cooking-plan-heading">Cooking plan</h2>
-    <p class="pantry-note">Every recipe in your plan, grouped into a batch-cooking order — do all your chopping and prep first, get the oven going, use the stovetop while the oven works, then finish everything up. Steps are sorted by keyword (oven/stovetop/prep/finish), not verified timing, so adjust to your own kitchen and equipment.</p>
+    <p class="pantry-note">Recipes are ordered to start with whatever ties up the oven longest, then stovetop dishes you can do in parallel, then quick no-cook steps last. Each recipe's own steps stay in their original order — this suggests when to start each dish, not how to interleave individual steps.</p>
     <div id="cooking-plan"></div>
   </section>
 </main>
@@ -324,7 +334,7 @@ function normalizeCustomRecipe(r){
 }
 
 // ---------- dataset loading ----------
-const RECIPE_CHUNK_COUNT = 5;
+const RECIPE_CHUNK_COUNT = 7;
 
 async function loadDataset(){
   const statusEl = document.getElementById('dataset-status');
@@ -358,7 +368,7 @@ async function loadDataset(){
     document.getElementById('generate-btn').textContent = 'Build meal plan';
   }catch(e){
     console.error(e);
-    statusEl.innerHTML = `Couldn't load the recipe library. If you opened this file directly (double-clicked it), browsers block that — instead serve this folder with a local server (e.g. <code>python3 -m http.server</code>) or host it on Netlify/GitHub Pages, then open it from that address. Also make sure all five <code>recipes-part1.json</code>–<code>recipes-part5.json</code> files are present alongside index.html.`;
+    statusEl.innerHTML = `Couldn't load the recipe library. If you opened this file directly (double-clicked it), browsers block that — instead serve this folder with a local server (e.g. <code>python3 -m http.server</code>) or host it on Netlify/GitHub Pages, then open it from that address. Also make sure all seven <code>recipes-part1.json</code>–<code>recipes-part7.json</code> files are present alongside index.html.`;
     statusEl.classList.add('error');
   }
 }
@@ -908,38 +918,41 @@ function buildGroceryList(){
 }
 
 // ---------- cooking plan ----------
+// Redesigned: instead of shattering every recipe's steps into keyword buckets
+// (which scrambled step order and ignored oven-temperature conflicts), this
+// keeps each recipe's own steps intact and in order, and only decides what
+// ORDER to start the recipes in — which is what's actually useful to plan.
 const OVEN_TEMP_RE = /(\d{3})\s*°\s*f?/i;
-const TIME_RE = /(\d+(?:\s*[-–to]\s*\d+)?)\s*(minutes?|mins?|hours?|hrs?)/i;
 const OVEN_WORDS = ['preheat','oven','bake','baking','baked','roast','broil'];
 const STOVETOP_WORDS = ['skillet','saucepan','stovetop','sauté','saute','sautéing','boil','simmer','fry','frying',
   'pan','pot','wok','heat oil','heat the oil','medium heat','medium-high heat','high heat','low heat'];
-const FINISH_WORDS = ['serve','plate','garnish','drizzle','top with','divide among','sprinkle','transfer to a',
-  'let cool','enjoy'];
-const PREP_WORDS = ['chop','dice','mince','whisk','mix','combine','season','marinate','toss','slice','stir together',
-  'peel','trim','rinse','pat dry','zest','juice','beat','fold'];
 
-function classifyStep(text, isLastStep){
-  const t = text.toLowerCase();
-  const hasOven = OVEN_WORDS.some(w => t.includes(w));
-  const hasStovetop = STOVETOP_WORDS.some(w => t.includes(w));
-  const hasFinish = FINISH_WORDS.some(w => t.includes(w));
-  const hasPrep = PREP_WORDS.some(w => t.includes(w));
-  const timeMatch = t.match(TIME_RE);
-  const tempMatch = t.match(OVEN_TEMP_RE);
+function extractMaxMinutes(steps){
+  let max = 0;
+  const re = /(\d+)(?:\s*[-–]\s*(\d+))?\s*(minutes?|mins?|hours?|hrs?)/gi;
+  steps.forEach(step => {
+    let m;
+    re.lastIndex = 0;
+    while((m = re.exec(step)) !== null){
+      let val = m[2] ? parseInt(m[2], 10) : parseInt(m[1], 10);
+      if(/hour|hr/i.test(m[3])) val *= 60;
+      if(val > max) max = val;
+    }
+  });
+  return max;
+}
 
-  let type;
-  if(t.includes('preheat') && hasOven) type = 'oven-preheat';
-  else if(hasOven) type = 'oven';
-  else if(hasStovetop) type = 'stovetop';
-  else if(isLastStep && hasFinish) type = 'finish';
-  else if(hasFinish && !hasPrep) type = 'finish';
-  else type = 'prep';
-
-  return {
-    type,
-    timeLabel: timeMatch ? `${timeMatch[1]} ${timeMatch[2]}` : null,
-    tempLabel: tempMatch ? `${tempMatch[1]}°F` : null
-  };
+function classifyRecipeForCooking(recipe){
+  const allText = recipe.steps.join(' ').toLowerCase();
+  const hasOven = OVEN_WORDS.some(w => allText.includes(w));
+  const hasStovetop = STOVETOP_WORDS.some(w => allText.includes(w));
+  const tempMatch = allText.match(OVEN_TEMP_RE);
+  const maxMinutes = extractMaxMinutes(recipe.steps);
+  let category;
+  if(hasOven) category = 'oven';
+  else if(hasStovetop) category = 'stovetop';
+  else category = 'nocook';
+  return { category, tempLabel: tempMatch ? `${tempMatch[1]}°F` : null, maxMinutes };
 }
 
 function buildCookingPlan(){
@@ -958,38 +971,55 @@ function buildCookingPlan(){
     return;
   }
 
-  const stages = { 'oven-preheat': [], oven: [], stovetop: [], prep: [], finish: [] };
-  uniqueRecipes.forEach(recipe => {
-    recipe.steps.forEach((step, i) => {
-      const isLast = i === recipe.steps.length - 1;
-      const c = classifyStep(step, isLast);
-      stages[c.type].push({ recipe: recipe.title, text: step, timeLabel: c.timeLabel, tempLabel: c.tempLabel });
-    });
-  });
+  const classified = uniqueRecipes.map(recipe => ({ recipe, ...classifyRecipeForCooking(recipe) }));
+  const ovenRecipes = classified.filter(c => c.category === 'oven').sort((a,b) => b.maxMinutes - a.maxMinutes);
+  const stovetopRecipes = classified.filter(c => c.category === 'stovetop')
+    .sort((a,b) => a.recipe.title.localeCompare(b.recipe.title));
+  const noCookRecipes = classified.filter(c => c.category === 'nocook')
+    .sort((a,b) => a.recipe.title.localeCompare(b.recipe.title));
+  const ordered = [...ovenRecipes, ...stovetopRecipes, ...noCookRecipes];
+
+  const distinctTemps = [...new Set(ovenRecipes.map(c => c.tempLabel).filter(Boolean))];
 
   const section = document.getElementById('cooking-plan-section');
   const wrap = document.getElementById('cooking-plan');
   wrap.innerHTML = '';
 
-  const stageDefs = [
-    { key: 'prep', title: '1. Prep everything first', hint: 'Chop, mix, season, and marinate for every recipe before you turn anything on — classic mise en place.' },
-    { key: 'oven-preheat', title: '2. Get the oven going', hint: 'Start these early since preheating takes a few minutes on its own.' },
-    { key: 'oven', title: '3. In the oven', hint: 'While these bake or roast, move on to the stovetop steps below.' },
-    { key: 'stovetop', title: '4. On the stovetop', hint: 'Good to do while oven items are cooking.' },
-    { key: 'finish', title: '5. Finish and assemble', hint: 'Pull everything together once the rest is done.' }
-  ];
+  if(distinctTemps.length > 1){
+    const warn = document.createElement('div');
+    warn.className = 'plan-warning';
+    warn.textContent = `Heads up: these recipes call for different oven temperatures (${distinctTemps.join(' vs ')}) — your oven can only run one temperature at a time, so cook them one after another rather than at once, or pick a middle temperature and adjust cook time slightly by eye.`;
+    wrap.appendChild(warn);
+  }
 
-  stageDefs.forEach(def => {
-    const steps = stages[def.key];
-    if(!steps.length) return;
-    const stageEl = document.createElement('div');
-    stageEl.className = 'plan-stage';
-    const stepsHtml = steps.map(s => {
-      const tags = [s.tempLabel, s.timeLabel].filter(Boolean).map(t => `<span class="step-tag">${escapeHtml(t)}</span>`).join('');
-      return `<div class="plan-step"><span class="step-recipe">${escapeHtml(s.recipe)}</span>${escapeHtml(s.text)}${tags}</div>`;
-    }).join('');
-    stageEl.innerHTML = `<h4>${def.title}</h4><p class="stage-hint">${def.hint}</p>${stepsHtml}`;
-    wrap.appendChild(stageEl);
+  const intro = document.createElement('p');
+  intro.className = 'stage-hint';
+  intro.textContent = 'Suggested order: start whatever needs the oven longest first, use the stovetop while it works, and save quick no-cook steps for last.';
+  wrap.appendChild(intro);
+
+  ordered.forEach((c, idx) => {
+    const card = document.createElement('article');
+    card.className = 'cook-order-card';
+    let tag;
+    if(c.category === 'oven'){
+      tag = `Oven${c.tempLabel ? ' · ' + c.tempLabel : ''}${c.maxMinutes ? ' · ~' + c.maxMinutes + ' min' : ''}`;
+    } else if(c.category === 'stovetop'){
+      tag = 'Stovetop — good to do while the oven works';
+    } else {
+      tag = 'No cooking — prep or assembly, save for last';
+    }
+    const stepsHtml = c.recipe.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+    card.innerHTML = `
+      <div class="cook-order-header">
+        <span class="cook-order-num">${idx + 1}</span>
+        <div>
+          <h4>${escapeHtml(c.recipe.title)}</h4>
+          <span class="step-tag">${escapeHtml(tag)}</span>
+        </div>
+      </div>
+      <ol>${stepsHtml}</ol>
+    `;
+    wrap.appendChild(card);
   });
 
   section.hidden = false;
