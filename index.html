@@ -600,6 +600,33 @@ function isMatched(recipeItemText, userPool){
   return false;
 }
 
+// ---------- familiarity bias (prefer recognizable, everyday dishes) ----------
+const COMMON_DISH_WORDS = ['chicken','beef','pork','turkey','shrimp','salmon','tuna','pasta','spaghetti',
+  'taco','burrito','quesadilla','enchilada','fajita','pizza','burger','sandwich','grilled cheese',
+  'mac and cheese','macaroni','casserole','soup','stew','chili','curry','stir-fry','stir fry','fried rice',
+  'meatball','meatloaf','pot roast','roast chicken','baked chicken','fried chicken','bbq','barbecue','salad',
+  'omelet','omelette','scrambled egg','pancake','waffle','french toast','oatmeal','banana bread',
+  'chocolate chip cookie','brownie','muffin','lasagna','shepherd\'s pie','pot pie','sloppy joe','nachos',
+  'quiche','frittata','hash','biscuits and gravy','dumpling','noodle','ramen','pad thai','fried egg',
+  'egg salad','tuna salad','chicken salad','potato salad','coleslaw','mashed potato','baked potato',
+  'grilled chicken','chicken parmesan','beef stew','vegetable soup','tomato soup','chicken noodle soup',
+  'granola','smoothie','burrito bowl','grain bowl'];
+const FANCY_PENALTY_WORDS = ['confit','consommé','consomme','gastrique','brunoise','tartare','carpaccio',
+  'foie gras','amuse','reduction sauce','emulsion','sous vide','terrine','quenelle','coulis','chiffonade',
+  'beurre blanc','velouté','veloute','ballotine','panna cotta','crème fraîche','creme fraiche',
+  'fennel pollen','microgreens','espuma','gelée','gelee','tuile','financier','ballontine','sweetbread',
+  'offal','tripe'];
+
+function familiarityScore(title){
+  const t = title.toLowerCase();
+  let s = 0;
+  if(COMMON_DISH_WORDS.some(w => t.includes(w))) s += 2;
+  if(FANCY_PENALTY_WORDS.some(w => t.includes(w))) s -= 2;
+  const commaCount = (title.match(/,/g) || []).length;
+  if(commaCount >= 2) s -= 1;
+  return s;
+}
+
 function rankRecipesForMealType(mealType){
   const scored = [];
   for(const recipe of state.dataset){
@@ -616,10 +643,14 @@ function rankRecipesForMealType(mealType){
     const total = recipe.ingredients.length;
     const score = total > 0 ? matchedCount / total : 0;
     if(matchedCount >= 1 && score >= 0.15){
-      scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score, _jitter: Math.random() });
+      const familiarity = familiarityScore(recipe.title);
+      // matchedCount dominates (how much you can actually make), familiarity
+      // nudges ties toward recognizable everyday dishes over odd editorial ones.
+      const combined = matchedCount * 10 + score * 3 + familiarity;
+      scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score, familiarity, combined, _jitter: Math.random() });
     }
   }
-  scored.sort((a,b) => (b.matchedCount - a.matchedCount) || (b.score - a.score) || (a.total - b.total) || (a._jitter - b._jitter));
+  scored.sort((a,b) => (b.combined - a.combined) || (a.total - b.total) || (a._jitter - b._jitter));
   return scored;
 }
 
