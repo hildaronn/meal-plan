@@ -679,11 +679,13 @@ function rankRecipesForMealType(mealType){
     const total = recipe.ingredients.length;
     const score = total > 0 ? matchedCount / total : 0;
     if(matchedCount >= 1 && score >= 0.15){
-      const familiarity = familiarityScore(recipe.title);
-      // matchedCount dominates (how much you can actually make), familiarity
-      // nudges ties toward recognizable everyday dishes over odd editorial ones.
-      const combined = matchedCount * 10 + score * 3 + familiarity;
-      scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score, familiarity, combined, _jitter: Math.random() });
+      // Food.com recipes carry a real, tag-based simplicity score (easy/quick/
+      // inexpensive tags, with "dinner-party"-tagged recipes already excluded
+      // from the dataset entirely). Epicurious has no such tags, so fall back
+      // to the title-keyword heuristic for those.
+      const simplicity = recipe.simplicity != null ? recipe.simplicity : familiarityScore(recipe.title);
+      const combined = matchedCount * 10 + score * 3 + simplicity * 2;
+      scored.push({ ...recipe, ingredients: annotated, matchedCount, total, score, simplicity, combined, _jitter: Math.random() });
     }
   }
   scored.sort((a,b) => (b.combined - a.combined) || (a.total - b.total) || (a._jitter - b._jitter));
